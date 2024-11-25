@@ -12,36 +12,31 @@ resource "aws_ses_domain_dkim" "dkim" {
   domain = aws_ses_domain_identity.domain.domain
 }
 
-# Domain Verification Records
-resource "aws_route53_record" "domain_verification" {
-  for_each = aws_ses_domain_identity.domain.verification_token
-
-  zone_id = var.route53_zone_id
-  name    = each.value
-  type    = "TXT"
-  ttl     = 300
-  records = [each.key]
-}
-
 # DKIM Records
-resource "aws_route53_record" "dkim_records" {
-  for_each = toset(aws_ses_domain_dkim.dkim_tokens)
-
+resource "aws_route53_record" "domain_verification" {
+  count   = 3
   zone_id = var.route53_zone_id
-  name    = "${each.value}._domainkey.${aws_ses_domain_identity.domain.domain}"
+  name    = "${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}._domainkey"
   type    = "CNAME"
-  ttl     = 300
-  records = ["${each.value}.amazonses.com"]
+  ttl     = "600"
+  records = ["${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}.dkim.amazonses.com"]
 }
 
-# Verify the domain
-resource "aws_ses_domain_identity_verification" "verify" {
-  domain = aws_ses_domain_identity.domain.domain
 
-  depends_on = [aws_route53_record.domain_verification]
+resource "aws_route53_record" "amazonses_verification_record" {
+  zone_id = var.route53_zone_id
+  name    = "_amazonses.${aws_ses_domain_identity.domain.id}"
+  type    = "TXT"
+  ttl     = "600"
+  records = [aws_ses_domain_identity.domain.verification_token]
 }
 
-# IAM Role for SMTP user
+resource "aws_ses_domain_identity_verification" "verification" {
+  domain = aws_ses_domain_identity.domain.id
+
+  depends_on = [aws_route53_record.amazonses_verification_record]
+}
+
 resource "aws_iam_user" "smtp_user" {
   name = var.smtp_user_name
 }
@@ -60,20 +55,3 @@ resource "aws_iam_user_policy" "smtp_user_policy" {
     ]
   })
 }
-
-# Access Key for SMTP User
-resource "aws_iam_access_key" "smtp_user_access_key" {
-  user = aws_iam_user.smtp_user.name
-}
-
-# # Output SMTP Credentials
-# data "aws_ses_account" "current" {}
-
-# output "smtp_credentials" {
-#   value = {
-#     smtp_username = aws_iam_access_key.smtp_user_access_key.id
-#     smtp_password = base64encode(aws_iam_access_key.smtp_user_access_key.secret)
-#     smtp_endpoint = data.aws_ses_account.current.smtp_endpoint
-#   }
-#   sensitive = true
-# }
