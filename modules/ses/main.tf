@@ -66,14 +66,14 @@ resource "aws_iam_access_key" "smtp_user_access_key" {
   user = aws_iam_user.smtp_user.name
 }
 
-# Output SMTP Credentials
-data "aws_ses_account" "current" {}
+# # Output SMTP Credentials
+# data "aws_ses_account" "current" {}
 
-output "smtp_credentials" {
-  value = {
-    smtp_username = aws_iam_access_key.smtp_user_access_key.id
-    smtp_password = base64encode(aws_iam_access_key.smtp_user_access_key.secret)
-    smtp_endpoint = data.aws_ses_account.current.smtp_endpoint
-  }
-  sensitive = true
-}
+# output "smtp_credentials" {
+#   value = {
+#     smtp_username = aws_iam_access_key.smtp_user_access_key.id
+#     smtp_password = base64encode(aws_iam_access_key.smtp_user_access_key.secret)
+#     smtp_endpoint = data.aws_ses_account.current.smtp_endpoint
+#   }
+#   sensitive = true
+# }
